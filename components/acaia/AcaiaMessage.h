@@ -7,12 +7,12 @@
 
 namespace esphome {
     namespace acaia {
-        enum AcaiaMessageType { weight, heartbeat, timer, tare_start_stop_reset };
+        enum AcaiaMessageType { none, weight, heartbeat, timer, tare_start_stop_reset };
         enum AcaiaButton { tare, start, stop, reset };
 
         class AcaiaMessage {
         public:
-            AcaiaMessageType type = heartbeat;
+            AcaiaMessageType type = none;
 
             bool has_weight = false;
             float weight;
@@ -22,6 +22,8 @@ namespace esphome {
 
             bool has_button = false;
             AcaiaButton button = tare;
+
+            bool connected = false;
         };
     }
 }

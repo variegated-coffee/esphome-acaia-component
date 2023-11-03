@@ -11,6 +11,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/components/ble_client/ble_client.h"
 #include <esp_gattc_api.h>
+#include <esp_timer.h>
 #include <cstdint>
 #include <cmath>
 #include "AcaiaMessage.h"
@@ -26,6 +27,11 @@
 
 #define PACKET_BUFFER_SIZE 1024
 
+#define ACAIA_MESSAGE_TYPE_IDENT 11
+#define ACAIA_MESSAGE_TYPE_NOTIFICATION_REQUEST 12
+#define ACAIA_MESSAGE_TYPE_HEARTBEAT 0
+#define ACAIA_MESSAGE_TYPE_TARE 4
+#define ACAIA_MESSAGE_TYPE_TIMER_MANIPULATION 13
 
 namespace esphome {
     namespace acaia {
@@ -42,6 +48,13 @@ namespace esphome {
                     case ESP_GATTC_OPEN_EVT: {
                         ESP_LOGD(TAG, "ESP_GATTC_OPEN_EVT");
                         conn_id_ = param->open.conn_id;
+
+                        connected = true;
+
+                        AcaiaMessage message;
+                        message.connected = connected;
+                        sendMessageToHandlers(message);
+
                         break;
                     }
                     case ESP_GATTC_SEARCH_CMPL_EVT: {
@@ -135,6 +148,8 @@ namespace esphome {
 
                             AcaiaMessage message;
 
+                            message.connected = connected;
+
                             switch (messageType) {
                                 case 0x05: {
                                     message.type = AcaiaMessageType::weight;
@@ -200,6 +215,15 @@ namespace esphome {
 
                         break;
                     }
+                    case ESP_GATTC_CLOSE_EVT: {
+                        connected = false;
+
+                        AcaiaMessage message;
+                        message.connected = connected;
+                        sendMessageToHandlers(message);
+
+                        break;
+                    }
                     default:
                         ESP_LOGD(TAG, "GATTC Event incoming, type %u", event);
                 }
@@ -218,10 +242,55 @@ namespace esphome {
                 this->on_message_callback_.add(std::move(callback));
             }
 
+
+            void sendTare() {
+                ESP_LOGD(TAG, "Sending Tare");
+                uint8_t payload[] = {0x00};
+
+                uint8_t encodedPayload[sizeof(payload) + 5];
+
+                encode(ACAIA_MESSAGE_TYPE_TARE, payload, sizeof(payload), encodedPayload, sizeof(encodedPayload));
+
+                write_to_scale_characteristic(encodedPayload, sizeof(encodedPayload));
+            }
+
+            void resetTimer() {
+                ESP_LOGD(TAG, "Resetting timer");
+                uint8_t payload[] = {0x00, 0x01};
+
+                uint8_t encodedPayload[sizeof(payload) + 5];
+
+                encode(ACAIA_MESSAGE_TYPE_TIMER_MANIPULATION, payload, sizeof(payload), encodedPayload, sizeof(encodedPayload));
+
+                write_to_scale_characteristic(encodedPayload, sizeof(encodedPayload));
+            }
+
+            void startTimer() {
+                ESP_LOGD(TAG, "Starting timer");
+                uint8_t payload[] = {0x00, 0x00};
+
+                uint8_t encodedPayload[sizeof(payload) + 5];
+
+                encode(ACAIA_MESSAGE_TYPE_TIMER_MANIPULATION, payload, sizeof(payload), encodedPayload, sizeof(encodedPayload));
+
+                write_to_scale_characteristic(encodedPayload, sizeof(encodedPayload));
+            }
+
+            void stopTimer() {
+                ESP_LOGD(TAG, "Stopping timer");
+                uint8_t payload[] = {0x00, 0x02};
+
+                uint8_t encodedPayload[sizeof(payload) + 5];
+
+                encode(ACAIA_MESSAGE_TYPE_TIMER_MANIPULATION, payload, sizeof(payload), encodedPayload, sizeof(encodedPayload));
+
+                write_to_scale_characteristic(encodedPayload, sizeof(encodedPayload));
+            }
+
         protected:
             void sendMessageToHandlers(AcaiaMessage message) {
                 this->on_message_callback_.call(message);
-
+/*
                 switch(message.type) {
                     case weight:
                         ESP_LOGI(TAG, "Weight: %.2f", message.weight);
@@ -244,7 +313,7 @@ namespace esphome {
                         } else {
                             ESP_LOGI(TAG, "Button %x, time: %.2f", message.button, message.time);
                         }
-                }
+                }*/
             }
 
             float decodeWeight(uint16_t raw, uint8_t unit, uint8_t signifier) {
@@ -269,11 +338,11 @@ namespace esphome {
                 ESP_LOGD(TAG, "Sending Heartbeat");
 
                 uint8_t payload[2] = {0x02, 0x00};
-                uint8_t encodedPayload[7];
+                uint8_t encodedPayload[sizeof(payload) + 5];
 
-                encode(0, payload, 2, encodedPayload, 7);
+                encode(ACAIA_MESSAGE_TYPE_HEARTBEAT, payload, sizeof(payload), encodedPayload, sizeof(encodedPayload));
 
-                write_to_scale_characteristic(encodedPayload, 7);
+                write_to_scale_characteristic(encodedPayload, sizeof(encodedPayload));
                 last_heartbeat = esp_timer_get_time();
             }
 
@@ -282,11 +351,11 @@ namespace esphome {
                 uint8_t payload[15] = {0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d,
                                      0x2d, 0x2d, 0x2d};
 
-                uint8_t encodedPayload[20];
+                uint8_t encodedPayload[sizeof(payload) + 5];
 
-                encode(11, payload, 15, encodedPayload, 20);
+                encode(ACAIA_MESSAGE_TYPE_IDENT, payload, sizeof(payload), encodedPayload, sizeof(encodedPayload));
 
-                write_to_scale_characteristic(encodedPayload, 20);
+                write_to_scale_characteristic(encodedPayload, sizeof(encodedPayload));
             }
 
             void notificationRequest() {
@@ -304,16 +373,19 @@ namespace esphome {
                         4, // setting
                 };
 
-                uint8_t encodedBuf[14];
+                uint8_t encodedBuf[sizeof(payload) + 5];
 
-                encode(12, payload, 9, encodedBuf, 14);
+                encode(ACAIA_MESSAGE_TYPE_NOTIFICATION_REQUEST, payload, sizeof(payload), encodedBuf, sizeof(encodedBuf));
 
-                write_to_scale_characteristic(encodedBuf, 14);
+                write_to_scale_characteristic(encodedBuf, sizeof(encodedBuf));
             }
 
             size_t encode(uint8_t messageType, uint8_t* inBuf, size_t len, uint8_t* outBuf, size_t outBufLen)
             {
-                //assert(outBufLen >= len + 5, "Output buffer must be at least 5 bytes larger than input buffer");
+                if (outBufLen < len + 5) {
+                    ESP_LOGE(TAG, "Invalid size on output buffer for encoding message of type %u", messageType);
+                    return 0;
+                }
 
                 outBuf[0] = MAGIC1;
                 outBuf[1] = MAGIC2;
@@ -345,6 +417,8 @@ namespace esphome {
                              status);
                 }
             }
+
+            bool connected = false;
 
             uint16_t conn_id_;
 

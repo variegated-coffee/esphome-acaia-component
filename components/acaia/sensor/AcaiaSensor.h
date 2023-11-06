@@ -22,12 +22,12 @@ namespace esphome {
             }
 
             void handleMessage(AcaiaMessage message) {
-                ESP_LOGD("ACAIA", "Handling message");
+                //ESP_LOGD("ACAIA", "Handling message");
                 if (message.has_weight) {
                     // Kg is the SI unit, which is also the unit represented in esphome.const, so
                     // we'll use that.
                     float weightInKg = message.weight / 1000.f;
-                    if (should_set(weight_, weightInKg, 0.00001)) {
+                    if (should_set(weight_, weightInKg, 0.0001)) {
                         weight_->publish_state(weightInKg);
                     }
                 }

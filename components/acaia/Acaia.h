@@ -52,6 +52,7 @@ namespace esphome {
                         connected = true;
 
                         AcaiaMessage message;
+                        message.timestamp = esp_timer_get_time();
                         message.connected = connected;
                         sendMessageToHandlers(message);
 
@@ -148,6 +149,8 @@ namespace esphome {
 
                             AcaiaMessage message;
 
+                            message.timestamp = esp_timer_get_time();
+
                             message.connected = connected;
 
                             switch (messageType) {
@@ -219,6 +222,7 @@ namespace esphome {
                         connected = false;
 
                         AcaiaMessage message;
+                        message.timestamp = esp_timer_get_time();
                         message.connected = connected;
                         sendMessageToHandlers(message);
 

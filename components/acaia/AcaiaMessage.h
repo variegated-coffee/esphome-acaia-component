@@ -5,6 +5,8 @@
 #ifndef SMART_LCC_ACAIAMESSAGE_H
 #define SMART_LCC_ACAIAMESSAGE_H
 
+#include <cstdint>
+
 namespace esphome {
     namespace acaia {
         enum AcaiaMessageType { none, weight, heartbeat, timer, tare_start_stop_reset };
@@ -24,6 +26,8 @@ namespace esphome {
             AcaiaButton button = tare;
 
             bool connected = false;
+
+            int64_t timestamp;
         };
     }
 }

@@ -1,0 +1,83 @@
+// an esphome file if you want to use this as a standalone component
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/open-lcc/esphome-acaia-component
+
+esphome:
+  name: "name"
+  friendly_name: "friendly_name" 
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG
+
+api:
+
+ota:
+
+wifi:
+  ssid: "ssid"
+  password: "password"
+  ap: {}
+
+esp32_ble_tracker:
+
+ble_client:
+  - mac_address: "scale mac address"
+    id: acaia_client
+
+acaia:
+  ble_client_id: acaia_client
+  id: acaia_1
+
+
+binary_sensor:
+  - platform: acaia
+    connected:
+      name: Acaia Connected
+      id: acaia_connected
+
+sensor:
+  - platform: acaia
+    weight:
+      id: scale_sens
+      name: Scale weight
+      accuracy_decimals: 1
+      unit_of_measurement: g
+      filters:
+        - lambda: return x * 1000;
+    flow:
+      name: Scale flow
+      id: flow_sens
+
+button:
+  - platform: template
+    name: Tare Scales
+    id: scale_tare
+    icon: "mdi:scale"
+    on_press:
+      - acaia.tare: acaia_1
+  - platform: template
+    name: Start Timer
+    id: start_timer
+    icon: "mdi:timer-outline"
+    on_press:
+      - acaia.start_timer: acaia_1    
+  - platform: template
+    name: Stop Timer
+    id: stop_timer
+    icon: "mdi:timer-outline"
+    on_press:
+      - acaia.stop_timer: acaia_1   
+  - platform: template
+    name: Reset Timer
+    id: reset_timer
+    icon: "mdi:timer-outline"
+    on_press:
+      - acaia.reset_timer: acaia_1
